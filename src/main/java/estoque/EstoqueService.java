@@ -34,7 +34,7 @@ public class EstoqueService {
         return response;
     }
 
-    public EstoqueResponse cadastrar(EstoqueRequest request) {
+    public EstoqueResponse cadastrarEstoque(EstoqueRequest request) {
         if (estoqueRepository.existsByNomeAndProdutoId(request.getNome(), request.getProdutoId())) {
             throw new RuntimeException("Já existe estoque desse produto com esse nome");
         }
@@ -49,17 +49,17 @@ public class EstoqueService {
 
     }
 
-    public Page<EstoqueResponse> listar(Pageable pageable) {
+    public Page<EstoqueResponse> listarEstoque(Pageable pageable) {
         return estoqueRepository.findAll(pageable).map(this::converterResponse);
     }
 
-    public EstoqueResponse buscar(Long id) {
+    public EstoqueResponse buscarEstoque(Long id) {
         Estoque estoque = estoqueRepository.findById(id).orElseThrow(() -> new RuntimeException("Estoque não existe"));
 
         return converterResponse(estoque);
     }
 
-    public EstoqueResponse atualizar(Long id, EstoqueRequest request) {
+    public EstoqueResponse atualizarEstoque(Long id, EstoqueRequest request) {
         Estoque estoque = estoqueRepository.findById(id).orElseThrow(() -> new RuntimeException("Estoque não encontrado"));
         Produto produto = produtoRepository.findById(request.getProdutoId()).orElseThrow(() -> new RuntimeException("produto não encontrado"));
 
@@ -75,7 +75,7 @@ public class EstoqueService {
         return converterResponse(estoqueRepository.save(estoque));
     }
 
-    public void deletar(Long id) {
+    public void deletarEstoque(Long id) {
         Estoque estoque = estoqueRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Estoque não encontrado"));
 
