@@ -1,8 +1,6 @@
 package usuario;
 
-import TipoUsuario.TipoUsuario;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import org.jspecify.annotations.Nullable;

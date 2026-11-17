@@ -1,4 +1,4 @@
-package TipoUsuario;
+package usuario;
 
 public enum TipoUsuario {
     USUARIO
