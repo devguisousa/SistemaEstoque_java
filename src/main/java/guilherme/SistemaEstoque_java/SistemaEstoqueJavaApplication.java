@@ -8,6 +8,8 @@ public class SistemaEstoqueJavaApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(SistemaEstoqueJavaApplication.class, args);
+
+		System.out.println("rodando");
 	}
 
 }
