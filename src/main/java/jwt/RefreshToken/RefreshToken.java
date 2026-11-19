@@ -1,4 +1,4 @@
-package jwt;
+package jwt.RefreshToken;
 
 import jakarta.persistence.*;
 import lombok.Getter;
