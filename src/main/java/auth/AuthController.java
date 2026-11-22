@@ -1,10 +1,6 @@
 package auth;
 
-import auth.login.LoginResponse;
 import jakarta.validation.Valid;
-import jwt.JwtService;
-import jwt.RefreshToken.RefreshRequest;
-import jwt.RefreshToken.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,8 +20,6 @@ public class AuthController {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService;
-    private final RefreshTokenService refreshService;
 
     @PostMapping("/cadastrar")
     @ResponseStatus(HttpStatus.CREATED)
@@ -44,32 +38,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody @Valid LoginRequest request) {
+    public UsuarioResponse login(@RequestBody @Valid LoginRequest request) {
         var credenciais = new UsernamePasswordAuthenticationToken(request.getEmail(), request.getSenha());
         Authentication autenticacao = authenticationManager.authenticate(credenciais);
-        Usuario usuario = (Usuario) autenticacao.getPrincipal();
 
-        return montarTokens(usuario, refreshService.criar(usuario));
-    }
-
-    @PostMapping("/refresh")
-    public LoginResponse refresh(@RequestBody @Valid RefreshRequest request) {
-        RefreshTokenService.Rotacao rotacao = refreshService.rotacionar(request.getRefreshToken());
-
-        return montarTokens(rotacao.usuario(), rotacao.novoRefreshToken());
-    }
-
-    @PostMapping("/logout")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(@RequestBody @Valid RefreshRequest request) {
-        refreshService.revogar(request.getRefreshToken());
-    }
-
-    private LoginResponse montarTokens(Usuario usuario, String refreshToken) {
-        LoginResponse response = new LoginResponse();
-        response.setAccessToken(jwtService.gerar(usuario));
-        response.setRefreshToken(refreshToken);
-        return response;
+        return converterResponse((Usuario) autenticacao.getPrincipal());
     }
 
     private UsuarioResponse converterResponse(Usuario usuario) {

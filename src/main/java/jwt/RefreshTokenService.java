@@ -1,4 +1,4 @@
-package jwt.RefreshToken;
+package jwt;
 
 
 import lombok.RequiredArgsConstructor;
