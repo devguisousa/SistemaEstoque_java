@@ -49,7 +49,13 @@ Estados: PENDENTE, TRANSFERIDO e CANCELADO.
 Segurança
 Autenticação sem sessão (stateless), com filtro que valida o token JWT (HS256) enviado no cabeçalho Authorization.
 Serviço de JWT com validade de 15 minutos e serviço de refresh token de 7 dias, guardado no banco apenas como hash (SHA-256) e com rotação a cada uso (a ligação com o login está nas pendências).
-Todas as rotas exigem autenticação, exceto o Swagger e os POST em /auth/**.
+Controle de acesso por perfil (deny by default: rota não listada é negada). Sem token ou com token inválido a API responde 401; logado sem permissão, 403.
+
+Perfil	Pode acessar
+Visitante (sem token)	POST /auth/login, /auth/cadastrar, /auth/refresh, /auth/logout e o Swagger
+USUARIO	GET em produtos, categorias, fornecedores/clientes, estoques, compras e vendas; cadastrar, atualizar, efetivar e cancelar compras e vendas; ver e atualizar a própria conta (/usuarios/{id})
+ADMIM	Tudo do USUARIO, mais criar/alterar/ativar/desativar/excluir produtos, categorias, fornecedores/clientes e estoques; listar usuários e ver/atualizar qualquer conta
+
 Limite de 5 requisições por minuto, por IP, em /auth/login, /auth/cadastrar e /auth/refresh. Ao passar do limite a API responde 429 com o cabeçalho Retry-After.
 Segredos (usuário e senha do banco, chave do JWT) ficam em variáveis de ambiente, nunca no código.
 Estrutura do projeto

@@ -9,7 +9,8 @@ import org.springframework.http.HttpStatus;
 
 import org.springframework.web.bind.annotation.*;
 
-@RequestMapping("Categoria")
+@RestController
+@RequestMapping("/Categoria")
 @RequiredArgsConstructor
 public class CategoriaController {
     private  final  CategoriaService service;

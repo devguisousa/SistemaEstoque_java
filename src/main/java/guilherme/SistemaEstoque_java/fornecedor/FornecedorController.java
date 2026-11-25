@@ -26,7 +26,7 @@ public class FornecedorController {
         return fornecedorService.listar(tipo, pageable);
     }
 
-    @GetMapping("/guilherme/SistemaEstoque_java/fornecedor/{id}")
+    @GetMapping("/fornecedor/{id}")
     public FornecedorResponse buscarFornecedor(@PathVariable Long id) {
         return  fornecedorService.buscarFornecedor(id, TipoFornecedor.FORNECEDOR);
     }

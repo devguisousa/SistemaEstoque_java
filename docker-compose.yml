@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: estoque-postgres
+    environment:
+      POSTGRES_DB: estoque
+      POSTGRES_USER: ${DB_USUARIO}
+      POSTGRES_PASSWORD: ${DB_SENHA}
+    ports:
+      - "5433:5432"
+    volumes:
+      - estoque_dados:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USUARIO} -d estoque" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  estoque_dados:

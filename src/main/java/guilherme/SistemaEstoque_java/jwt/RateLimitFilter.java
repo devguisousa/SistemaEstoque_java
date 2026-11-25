@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final Set<String> ROTAS_LIMITADAS =
-            Set.of("/guilherme/SistemaEstoque_java/auth/login", "/auth/cadastrar", "/auth/refresh");
+            Set.of("/auth/login", "/auth/cadastrar", "/auth/refresh");
 
     private final ConcurrentHashMap<String, Bucket> baldes = new ConcurrentHashMap<>();
 

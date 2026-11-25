@@ -1,11 +1,11 @@
 package guilherme.SistemaEstoque_java.categoria;
 
 
+import guilherme.SistemaEstoque_java.produto.ProdutoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import guilherme.SistemaEstoque_java.produto.ProdutoRepository;
 
 
 @Service
@@ -57,8 +57,8 @@ public class CategoriaService {
     }
 
     public void Deletar(Long id) {
-        if (produtoRepository.existsByProduto(id)) {
-            throw  new RuntimeException("Categoria tem produtos registrados e não pode ser apagada");
+        if (produtoRepository.existsByCategoriaId(id)) {
+            throw new RuntimeException("Categoria tem produtos registrados e não pode ser apagada");
         }
         Categoria categoria = categoriaRepository.findById(id).orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
 
