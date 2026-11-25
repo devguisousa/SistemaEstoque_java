@@ -1,171 +1,251 @@
 package guilherme.SistemaEstoque_java;
 
 import guilherme.SistemaEstoque_java.auth.AuthService;
-import guilherme.SistemaEstoque_java.auth.login.LoginRequest;
-import guilherme.SistemaEstoque_java.auth.login.LoginResponse;
+import guilherme.SistemaEstoque_java.categoria.CategoriaService;
+import guilherme.SistemaEstoque_java.compra.CompraService;
+import guilherme.SistemaEstoque_java.config.SecurityConfig;
+import guilherme.SistemaEstoque_java.estoque.EstoqueService;
+import guilherme.SistemaEstoque_java.fornecedor.FornecedorService;
 import guilherme.SistemaEstoque_java.jwt.JwtService;
-import guilherme.SistemaEstoque_java.jwt.RefreshTokenService;
-import guilherme.SistemaEstoque_java.usuario.AtualizarUsuarioRequest;
+import guilherme.SistemaEstoque_java.produto.ProdutoService;
 import guilherme.SistemaEstoque_java.usuario.TipoUsuario;
 import guilherme.SistemaEstoque_java.usuario.Usuario;
 import guilherme.SistemaEstoque_java.usuario.UsuarioRepository;
-import guilherme.SistemaEstoque_java.usuario.UsuarioRequest;
-import guilherme.SistemaEstoque_java.usuario.UsuarioResponse;
-import org.junit.jupiter.api.BeforeEach;
+import guilherme.SistemaEstoque_java.venda.VendaService;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.AuthenticationManager;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultMatcher;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ExtendWith(MockitoExtension.class)
-class AuthServiceTest {
+@WebMvcTest
+@Import(SecurityConfig.class)
+class SecurityConfigTest {
 
-    @Mock
-    private JwtService jwtService;
+    @Autowired MockMvc mvc;
 
-    @Mock
-    private RefreshTokenService refreshTokenService;
+    @MockitoBean AuthService authService;
+    @MockitoBean CategoriaService categoriaService;
+    @MockitoBean CompraService compraService;
+    @MockitoBean EstoqueService estoqueService;
+    @MockitoBean FornecedorService fornecedorService;
+    @MockitoBean ProdutoService produtoService;
+    @MockitoBean VendaService vendaService;
+    @MockitoBean JwtService jwtService;
+    @MockitoBean UsuarioRepository usuarioRepository;
 
-    @Mock
-    private UsuarioRepository usuarioRepository;
+    private static final Usuario ADMIN = usuario(1L, TipoUsuario.ADMIM);
+    private static final Usuario COMUM = usuario(2L, TipoUsuario.USUARIO);
 
-    @Mock
-    private AuthenticationManager authenticationManager;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
+    private static final ResultMatcher LIBERADO =
+            r -> assertThat(r.getResponse().getStatus()).isNotIn(401, 403, 404, 405);
 
-    @InjectMocks
-    private AuthService authService;
-
-    private Usuario usuario;
-
-    @BeforeEach
-    void montar() {
-        usuario = new Usuario();
-        usuario.setId(1L);
-        usuario.setNome("Ana");
-        usuario.setEmail("ana@x.com");
-        usuario.setSenha("senha-criptografada");
-        usuario.setTipoUsuario(TipoUsuario.USUARIO);
+    private static Usuario usuario(Long id, TipoUsuario tipo) {
+        Usuario u = new Usuario();
+        u.setId(id);
+        u.setEmail(tipo.name().toLowerCase() + "@teste.com");
+        u.setNome(tipo.name());
+        u.setSenha("x");
+        u.setTipoUsuario(tipo);
+        return u;
     }
 
-    @Test
-    void cadastrarSalvaUsuarioComSenhaCriptografada() {
-        UsuarioRequest request = new UsuarioRequest();
-        request.setNome("Ana");
-        request.setEmail("ana@x.com");
-        request.setSenha("12345678");
-
-        when(usuarioRepository.existsByEmail("ana@x.com")).thenReturn(false);
-        when(passwordEncoder.encode("12345678")).thenReturn("senha-criptografada");
-        when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
-
-
-        UsuarioResponse response = authService.cadastrar(request);
-
-        assertThat(response.getEmail()).isEqualTo("ana@x.com");
-        assertThat(response.getTipoUsuario()).isEqualTo(TipoUsuario.USUARIO);
-        verify(passwordEncoder).encode("12345678");
+    private static MockHttpServletRequestBuilder como(Usuario u, MockHttpServletRequestBuilder req) {
+        return req.with(authentication(new UsernamePasswordAuthenticationToken(u, null, u.getAuthorities())));
     }
 
-    @Test
-    void cadastrarLancaErroQuandoEmailJaExiste() {
-        UsuarioRequest request = new UsuarioRequest();
-        request.setEmail("ana@x.com");
-
-        when(usuarioRepository.existsByEmail("ana@x.com")).thenReturn(true);
-
-        assertThatThrownBy(() -> authService.cadastrar(request))
-                .hasMessage("email ja cadastrado");
-        verify(usuarioRepository, never()).save(any(Usuario.class));
+    private static MockHttpServletRequestBuilder req(String metodo, String rota) {
+        return request(HttpMethod.valueOf(metodo), rota)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}");
     }
 
-    @Test
-    void loginDevolveAccessTokenERefreshToken() {
-        LoginRequest request = new LoginRequest();
-        request.setEmail("ana@x.com");
-        request.setSenha("12345678");
+    @Nested
+    class Visitante {
 
-        when(authenticationManager.authenticate(any()))
-                .thenReturn(new UsernamePasswordAuthenticationToken(usuario, null));
-        when(refreshTokenService.criar(usuario)).thenReturn("refresh-token");
-        when(jwtService.gerar(usuario)).thenReturn("access-token");
+        @ParameterizedTest
+        @CsvSource({"/auth/login", "/auth/cadastrar", "/auth/refresh", "/auth/logout"})
+        void podeUsarRotasDeAutenticacao(String rota) throws Exception {
+            mvc.perform(req("POST", rota)).andExpect(LIBERADO);
+        }
 
+        @Test
+        void podeAbrirDocumentacao() throws Exception {
+            // o springdoc não sobe no @WebMvcTest (dá 404); aqui só importa não ser barrado
+            mvc.perform(get("/v3/api-docs"))
+                    .andExpect(r -> assertThat(r.getResponse().getStatus()).isNotIn(401, 403));
+        }
 
-        LoginResponse response = authService.login(request);
+        @ParameterizedTest
+        @CsvSource({
+                "GET, /produtos/listar",
+                "GET, /Categoria/listar",
+                "GET, /fornecedores/listar",
+                "GET, /estoque/listar",
+                "GET, /compras/listar",
+                "GET, /vendas/listar",
+                "POST, /vendas/cadastrar",
+                "GET, /usuarios",
+                "GET, /usuarios/1",
+                "GET, /rota-inexistente"
+        })
+        void recebe401NoResto(String metodo, String rota) throws Exception {
+            mvc.perform(req(metodo, rota)).andExpect(status().isUnauthorized());
+        }
 
-        assertThat(response.getAccessToken()).isEqualTo("access-token");
-        assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
-        assertThat(response.getUsuario().getEmail()).isEqualTo("ana@x.com");
+        @Test
+        void tokenInvalidoRecebe401() throws Exception {
+            when(jwtService.validar("invalido")).thenReturn(null);
+
+            mvc.perform(get("/produtos/listar").header("Authorization", "Bearer invalido"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void loginTemLimiteDeTentativas() throws Exception {
+            for (int i = 0; i < 5; i++) {
+                mvc.perform(req("POST", "/auth/login").with(ip("10.9.9.9"))).andExpect(LIBERADO);
+            }
+            mvc.perform(req("POST", "/auth/login").with(ip("10.9.9.9")))
+                    .andExpect(status().isTooManyRequests());
+        }
+
+        private static org.springframework.test.web.servlet.request.RequestPostProcessor ip(String ip) {
+            return r -> {
+                r.setRemoteAddr(ip);
+                return r;
+            };
+        }
     }
 
-    @Test
-    void buscarLancaErroQuandoUsuarioNaoExiste() {
-        when(usuarioRepository.findById(99L)).thenReturn(Optional.empty());
+    @Nested
+    class UsuarioComum {
 
-        assertThatThrownBy(() -> authService.buscar(99L))
-                .hasMessage("usuario não encontrado");
+        @ParameterizedTest
+        @CsvSource({
+                // leitura de tudo
+                "GET, /produtos/listar",
+                "GET, /produtos/buscar/1",
+                "GET, /Categoria/listar",
+                "GET, /fornecedores/listar",
+                "GET, /fornecedores/cliente/1",
+                "GET, /estoque/buscar/1",
+                "GET, /compras/listar",
+                "GET, /vendas/buscar/1",
+                // operação de compras e vendas
+                "POST, /compras/cadastrar",
+                "PUT, /compras/atualizar/1",
+                "PATCH, /compras/comprar/1",
+                "PATCH, /compras/cancelar/1",
+                "POST, /vendas/cadastrar",
+                "PUT, /vendas/atualizar/1",
+                "PATCH, /vendas/vender/1",
+                "PATCH, /vendas/cancelar/1",
+                "POST, /produtos/cadastro",
+                "PUT, /produtos/atualizar/1",
+                "PATCH, /produtos/desativar/1",
+                "POST, /fornecedores/cadastrar",
+                "PATCH, /fornecedores/ativar/1"
+        })
+        void podeConsultarEOperar(String metodo, String rota) throws Exception {
+            mvc.perform(como(COMUM, req(metodo, rota))).andExpect(LIBERADO);
+        }
+
+        @ParameterizedTest
+        @CsvSource({
+                "POST, /Categoria/cadastrar",
+                "DELETE, /Categoria/deletar/1",
+                "POST, /estoque/cadastrar",
+                "DELETE, /estoque/deletar/1",
+                "GET, /usuarios",
+                "GET, /rota-inexistente"
+        })
+        void naoPodeAlterarCadastrosBase(String metodo, String rota) throws Exception {
+            mvc.perform(como(COMUM, req(metodo, rota))).andExpect(status().isForbidden());
+        }
+
+        @Test
+        void veEAtualizaApenasAPropriaConta() throws Exception {
+            mvc.perform(como(COMUM, get("/usuarios/2"))).andExpect(status().isOk());
+            mvc.perform(como(COMUM, atualizarUsuario(2))).andExpect(status().isOk());
+
+            mvc.perform(como(COMUM, get("/usuarios/1"))).andExpect(status().isForbidden());
+            mvc.perform(como(COMUM, atualizarUsuario(1))).andExpect(status().isForbidden());
+        }
+
+        @Test
+        void tokenValidoAutentica() throws Exception {
+            when(jwtService.validar("valido")).thenReturn(COMUM.getEmail());
+            when(usuarioRepository.findByEmail(COMUM.getEmail())).thenReturn(Optional.of(COMUM));
+
+            mvc.perform(get("/produtos/listar").header("Authorization", "Bearer valido"))
+                    .andExpect(status().isOk());
+            mvc.perform(post("/produtos/cadastro").header("Authorization", "Bearer valido")
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(LIBERADO);
+        }
     }
 
-    @Test
-    void atualizarCriptografaANovaSenha() {
-        AtualizarUsuarioRequest request = new AtualizarUsuarioRequest();
-        request.setSenha("novaSenha123");
+    @Nested
+    class Admin {
 
-        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
-        when(passwordEncoder.encode("novaSenha123")).thenReturn("nova-senha-criptografada");
-        when(usuarioRepository.save(usuario)).thenReturn(usuario);
+        @ParameterizedTest
+        @CsvSource({
+                "POST, /produtos/cadastro",
+                "PUT, /produtos/atualizar/1",
+                "PATCH, /produtos/ativar/1",
+                "POST, /Categoria/cadastrar",
+                "PUT, /Categoria/atualizar/1",
+                "DELETE, /Categoria/deletar/1",
+                "POST, /fornecedores/cadastrar",
+                "GET, /fornecedores/fornecedor/1",
+                "PATCH, /fornecedores/desativar/1",
+                "POST, /estoque/cadastrar",
+                "DELETE, /estoque/deletar/1",
+                "POST, /compras/cadastrar",
+                "PATCH, /vendas/vender/1",
+                "GET, /usuarios"
+        })
+        void podeTudo(String metodo, String rota) throws Exception {
+            mvc.perform(como(ADMIN, req(metodo, rota))).andExpect(LIBERADO);
+        }
 
+        @Test
+        void gerenciaQualquerConta() throws Exception {
+            mvc.perform(como(ADMIN, get("/usuarios/2"))).andExpect(status().isOk());
+            mvc.perform(como(ADMIN, atualizarUsuario(2))).andExpect(status().isOk());
+        }
 
-        authService.atualizar(1L, request);
-
-        assertThat(usuario.getSenha()).isEqualTo("nova-senha-criptografada");
+        @Test
+        void rotaNaoMapeadaContinuaNegada() throws Exception {
+            mvc.perform(como(ADMIN, get("/rota-inexistente"))).andExpect(status().isForbidden());
+        }
     }
 
-    @Test
-    void atualizarLancaErroQuandoEmailJaEDeOutroUsuario() {
-        AtualizarUsuarioRequest request = new AtualizarUsuarioRequest();
-        request.setEmail("bia@x.com");
-
-        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
-        when(usuarioRepository.existsByEmail("bia@x.com")).thenReturn(true);
-
-        assertThatThrownBy(() -> authService.atualizar(1L, request))
-                .hasMessage("email ja cadastrado");
-        verify(usuarioRepository, never()).save(any(Usuario.class));
-    }
-
-    @Test
-    void refreshDevolveNovosTokens() {
-        when(refreshTokenService.rotacionar("refresh-antigo"))
-                .thenReturn(new RefreshTokenService.Rotacao(usuario, "refresh-novo"));
-        when(jwtService.gerar(usuario)).thenReturn("access-novo");
-
-
-        LoginResponse response = authService.refresh(new AuthService.RefreshRequest("refresh-antigo"));
-
-        assertThat(response.getAccessToken()).isEqualTo("access-novo");
-        assertThat(response.getRefreshToken()).isEqualTo("refresh-novo");
-    }
-
-    @Test
-    void logoutRevogaORefreshToken() {
-        authService.logout(new AuthService.RefreshRequest("refresh-token"));
-
-        verify(refreshTokenService).revogar("refresh-token");
+    private static MockHttpServletRequestBuilder atualizarUsuario(long id) {
+        return put("/usuarios/" + id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"novo@teste.com\"}");
     }
 }

@@ -33,13 +33,14 @@ public class SecurityConfig {
 
     private static final String[] MOVIMENTACOES = {"/compras/**", "/vendas/**"};
     private static final String[] CADASTRO = {"/fornecedores/**", "/transferencia/**", "/produtos/**"};
+    private static final String[] ESTRUTURA = {"/Categoria/**", "/estoque/**"};
 
     private final FiltroJwt filtroJwt;
     private final RateLimitFilter rateLimitFilter;
 
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception{
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -57,6 +58,8 @@ public class SecurityConfig {
 
                         .requestMatchers(MOVIMENTACOES).hasAnyRole(USUARIO, ADMIN)
                         .requestMatchers(CADASTRO).hasAnyRole(USUARIO, ADMIN)
+                        .requestMatchers(HttpMethod.GET, ESTRUTURA).hasAnyRole(USUARIO, ADMIN)
+                        .requestMatchers(ESTRUTURA).hasRole(ADMIN)
                         .anyRequest().denyAll())
 
                 .addFilterBefore(filtroJwt, UsernamePasswordAuthenticationFilter.class)
@@ -72,6 +75,6 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return  authenticationConfiguration.getAuthenticationManager();
+        return authenticationConfiguration.getAuthenticationManager();
     }
 }
